@@ -48,23 +48,25 @@ body {
 
 .title h1 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.35rem;
   letter-spacing: 0.04em;
 }
 
 .subtitle {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--muted);
 }
 
 .gear-btn {
-  background: transparent;
+  background: rgba(36, 28, 21, 0.06);
   border: none;
   color: var(--muted);
-  font-size: 1.1rem;
+  font-size: 2.1rem;
   line-height: 1;
   cursor: pointer;
-  padding: 4px 6px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  opacity: 0.7;
 }
 
 .gear-btn:active {
@@ -76,7 +78,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 12px 6px 16px;
+  padding: 10px 6px 14px;
   overflow-y: auto;
   min-height: 0;
 }
@@ -86,7 +88,7 @@ body {
   padding: 10px 14px;
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  font-size: 0.98rem;
+  font-size: 0.92rem;
   line-height: 1.6;
   word-break: break-word;
 }
@@ -144,10 +146,10 @@ body {
 
 .input-bar input {
   flex: 1;
-  padding: 12px 14px;
+  padding: 10px 12px;
   border-radius: 999px;
   border: 1px solid rgba(36, 28, 21, 0.18);
-  font-size: 1rem;
+  font-size: 0.95rem;
   background: #fff;
 }
 
@@ -157,7 +159,7 @@ body {
   color: #4a3112;
   font-weight: 600;
   border-radius: 999px;
-  padding: 0 18px;
+  padding: 0 16px;
   cursor: pointer;
   box-shadow: var(--shadow);
 }
@@ -179,8 +181,42 @@ body {
 .ad-slot .pr {
   margin-top: 6px;
   text-align: right;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   color: var(--muted);
+}
+
+
+.settings {
+  position: relative;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(320px, 80vw);
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(36, 28, 21, 0.12);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 10px;
+  display: none;
+  z-index: 5;
+}
+
+.menu.open {
+  display: block;
+}
+
+.menu-item {
+  width: 100%;
+  border: 1px solid rgba(36, 28, 21, 0.12);
+  background: #fff;
+  border-radius: 10px;
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 0.9rem;
+  cursor: pointer;
 }
 
 .input-bar button:active {

@@ -175,6 +175,8 @@ const ui = {
   input: document.getElementById("userInput"),
   send: document.getElementById("sendBtn"),
   reset: document.getElementById("resetBtn"),
+  settingsBtn: document.getElementById("settingsBtn"),
+  settingsMenu: document.getElementById("settingsMenu"),
   title: document.getElementById("titleArea"),
 };
 
@@ -1069,6 +1071,17 @@ function bindEvents() {
     }
   });
   ui.reset.addEventListener("click", resetAll);
+  ui.settingsBtn.addEventListener("click", () => {
+    const isOpen = ui.settingsMenu.classList.toggle("open");
+    ui.settingsBtn.setAttribute("aria-expanded", String(isOpen));
+  });
+  document.addEventListener("click", (event) => {
+    if (!ui.settingsMenu.classList.contains("open")) return;
+    const target = event.target;
+    if (ui.settingsMenu.contains(target) || ui.settingsBtn.contains(target)) return;
+    ui.settingsMenu.classList.remove("open");
+    ui.settingsBtn.setAttribute("aria-expanded", "false");
+  });
   ui.title.addEventListener("click", (event) => {
     if (!event.altKey) return;
     seedFromBlocks();

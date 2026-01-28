@@ -14,7 +14,24 @@
         <h1>爺ぴーてぃー</h1>
         <div class="subtitle">GGPT-2.1 — Generative Grandpa Pattern Talker</div>
       </div>
-      <button class="gear-btn" id="resetBtn" type="button" aria-label="リセット">⚙</button>
+      <div class="settings">
+        <button class="gear-btn" id="settingsBtn" type="button" aria-expanded="false" aria-haspopup="true">⚙</button>
+        <div class="menu" id="settingsMenu" role="menu" aria-label="設定">
+          <button class="menu-item" id="resetBtn" type="button" role="menuitem">会話履歴をリセット</button>
+          <div class="ad-slot" id="adSlot" aria-label="広告枠">
+            <iframe
+              title="Spotify album"
+              src="https://open.spotify.com/embed/album/6ZH6p14vtIuwca36ayikOQ?utm_source=generator"
+              width="100%"
+              height="152"
+              frameborder="0"
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              loading="lazy"
+            ></iframe>
+            <div class="pr">PR</div>
+          </div>
+        </div>
+      </div>
     </header>
 
     <main id="chat" class="chat" aria-live="polite"></main>
@@ -23,19 +40,6 @@
       <input id="userInput" type="text" placeholder="話しかけてみる…" autocomplete="off" />
       <button id="sendBtn" type="button">送信</button>
     </footer>
-
-    <div class="ad-slot" id="adSlot" aria-label="広告枠">
-      <iframe
-        title="Spotify album"
-        src="https://open.spotify.com/embed/album/6ZH6p14vtIuwca36ayikOQ?utm_source=generator"
-        width="100%"
-        height="152"
-        frameborder="0"
-        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-        loading="lazy"
-      ></iframe>
-      <div class="pr">PR</div>
-    </div>
   </div>
 
   <script src="app.js" defer></script>
