@@ -153,6 +153,7 @@ const PARTICLES = ["は", "が", "を", "に", "で", "と", "も", "の"];
 const state = {
   chat: { messages: [] },
   model: { vocab: { [BOS]: 1, [EOS]: 1 }, bigram: {} },
+  world: null,
   runtime: {
     lastTokens: [BOS],
     seed: Math.floor(Math.random() * 1e9),
@@ -163,7 +164,7 @@ const state = {
     settings: { ...DEFAULT_SETTINGS },
   },
   meta: {
-    version: "0.1",
+    version: "2.1",
     updatedAt: Date.now(),
     seeded: false,
   },
@@ -196,10 +197,57 @@ function safeSave(key, value) {
   }
 }
 
+function defaultWorld() {
+  return {
+    place: "washitsu",
+    time: {
+      phase: "day",
+      tick: 0,
+      lastUpdate: Date.now(),
+    },
+    weather: {
+      type: "clear",
+      strength: 0,
+    },
+    room: {
+      windowOpen: false,
+      lightOn: false,
+      futonOut: true,
+      chabudaiClutter: 0,
+    },
+    items: {
+      yunomi: {
+        hasTea: true,
+        temp: "warm",
+      },
+    },
+    body: {
+      clarity: 0.15,
+      sleepiness: 0.6,
+      coldHands: 0.3,
+      backPain: 0.2,
+    },
+    memory: {
+      lastMonologue: "",
+      lastMonologueAt: 0,
+      lastWorldSeed: "",
+    },
+  };
+}
+
 function initState() {
   state.chat = safeLoad(STORAGE.chat, state.chat);
   state.model = safeLoad(STORAGE.model, state.model);
-  state.runtime = safeLoad(STORAGE.state, state.runtime);
+  const savedState = safeLoad(STORAGE.state, null);
+  if (savedState && (savedState.runtime || savedState.world)) {
+    state.runtime = savedState.runtime || state.runtime;
+    state.world = savedState.world || defaultWorld();
+  } else if (savedState) {
+    state.runtime = savedState;
+    state.world = defaultWorld();
+  } else {
+    state.world = defaultWorld();
+  }
   state.meta = safeLoad(STORAGE.meta, state.meta);
 
   state.runtime.settings = { ...DEFAULT_SETTINGS, ...state.runtime.settings };
@@ -207,16 +255,24 @@ function initState() {
   if (typeof state.runtime.lastUserWasQuestion !== "boolean") state.runtime.lastUserWasQuestion = false;
   if (typeof state.runtime.lastUserText !== "string") state.runtime.lastUserText = "";
   if (typeof state.runtime.lastAiText !== "string") state.runtime.lastAiText = "";
+  if (!state.world) state.world = defaultWorld();
+  if (!state.world.time) state.world.time = defaultWorld().time;
+  if (!state.world.weather) state.world.weather = defaultWorld().weather;
+  if (!state.world.room) state.world.room = defaultWorld().room;
+  if (!state.world.items) state.world.items = defaultWorld().items;
+  if (!state.world.body) state.world.body = defaultWorld().body;
+  if (!state.world.memory) state.world.memory = defaultWorld().memory;
+  if (!state.world.memory.lastWorldSeed) state.world.memory.lastWorldSeed = "";
   if (!state.model.vocab) state.model.vocab = { [BOS]: 1, [EOS]: 1 };
   if (!state.model.bigram) state.model.bigram = {};
-  if (!state.meta.version) state.meta.version = "0.1";
+  state.meta.version = "2.1";
 }
 
 function persistAll() {
   state.meta.updatedAt = Date.now();
   safeSave(STORAGE.chat, state.chat);
   safeSave(STORAGE.model, state.model);
-  safeSave(STORAGE.state, state.runtime);
+  safeSave(STORAGE.state, { runtime: state.runtime, world: state.world });
   safeSave(STORAGE.meta, state.meta);
 }
 
@@ -353,6 +409,178 @@ function pickStartupMessage() {
 
 function pickGenericTopic() {
   return GENERIC_TOPICS[Math.floor(Math.random() * GENERIC_TOPICS.length)];
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function randRange(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+function worldCatchup() {
+  const now = Date.now();
+  const last = state.world.time.lastUpdate || now;
+  const elapsed = now - last;
+  const stepMs = 5 * 60 * 1000;
+  const steps = Math.min(5, Math.floor(elapsed / stepMs));
+  for (let i = 0; i < steps; i += 1) {
+    worldStep();
+  }
+  state.world.time.lastUpdate = now;
+}
+
+function worldStep() {
+  const world = state.world;
+  const { time, weather, room, items, body } = world;
+  time.tick += 1;
+  if (time.tick % 6 === 0) {
+    const phases = ["morning", "day", "evening", "night"];
+    const idx = phases.indexOf(time.phase);
+    time.phase = phases[(idx + 1) % phases.length];
+  }
+
+  if (Math.random() < 0.08) {
+    const types = ["clear", "rain", "wind"];
+    weather.type = types[Math.floor(Math.random() * types.length)];
+    weather.strength = Math.floor(Math.random() * 3);
+  } else {
+    if (weather.type === "rain" && Math.random() < 0.25) {
+      weather.type = "clear";
+      weather.strength = Math.max(0, weather.strength - 1);
+    } else if (weather.type === "wind" && Math.random() < 0.2) {
+      weather.type = "clear";
+      weather.strength = Math.max(0, weather.strength - 1);
+    } else if (weather.strength > 0 && Math.random() < 0.25) {
+      weather.strength = Math.max(0, weather.strength - 1);
+    }
+  }
+
+  if (time.phase === "night" && room.windowOpen && Math.random() < 0.3) room.windowOpen = false;
+  if (time.phase !== "night" && !room.windowOpen && Math.random() < 0.08) room.windowOpen = true;
+  if (time.phase === "night" && Math.random() < 0.2) room.lightOn = true;
+  if (time.phase !== "night" && room.lightOn && Math.random() < 0.25) room.lightOn = false;
+  if (time.phase === "night" && Math.random() < 0.25) room.futonOut = true;
+  if (time.phase === "day" && Math.random() < 0.2) room.futonOut = false;
+
+  if (Math.random() < 0.2) {
+    room.chabudaiClutter = clamp(room.chabudaiClutter + (Math.random() < 0.5 ? -1 : 1), 0, 3);
+  }
+
+  if (items.yunomi.hasTea) {
+    if (items.yunomi.temp === "hot" && Math.random() < 0.4) items.yunomi.temp = "warm";
+    else if (items.yunomi.temp === "warm" && Math.random() < 0.4) items.yunomi.temp = "cold";
+    if (Math.random() < 0.08) items.yunomi.hasTea = false;
+  } else if (Math.random() < 0.05) {
+    items.yunomi.hasTea = true;
+    items.yunomi.temp = "hot";
+  }
+
+  if (Math.random() < 0.03) {
+    body.clarity = randRange(0.75, 0.95);
+  } else {
+    body.clarity += randRange(-0.03, 0.02);
+    body.clarity *= 0.92;
+  }
+  body.clarity = clamp(body.clarity, 0.02, 1.0);
+
+  if (time.phase === "night") body.sleepiness += 0.05;
+  if (time.phase === "morning") body.sleepiness -= 0.04;
+  body.sleepiness += randRange(-0.02, 0.03);
+  body.sleepiness = clamp(body.sleepiness, 0.05, 1.0);
+
+  if (weather.type === "rain" || weather.type === "wind") body.coldHands += 0.05;
+  if (room.windowOpen) body.coldHands += 0.03;
+  if (weather.type === "clear" && time.phase === "day") body.coldHands -= 0.04;
+  body.coldHands = clamp(body.coldHands, 0, 1);
+
+  body.backPain += randRange(-0.02, 0.04);
+  body.backPain = clamp(body.backPain, 0, 1);
+}
+
+function pickMonologueSeed() {
+  const { time, weather, room, items, body } = state.world;
+  const candidates = [];
+  if (time.phase === "night" && body.sleepiness > 0.6) candidates.push("眠いのう", "布団が呼んどる");
+  if (weather.type === "rain") candidates.push("雨の音がする");
+  if (weather.type === "wind") candidates.push("風が強い");
+  if (weather.type === "clear" && time.phase === "day") candidates.push("晴れてきた", "あたたかい");
+  if (body.coldHands > 0.6) candidates.push("手が冷える");
+  if (items.yunomi.hasTea && items.yunomi.temp === "cold") candidates.push("茶が冷めた");
+  if (!items.yunomi.hasTea) candidates.push("茶をいれなおすか");
+  if (room.windowOpen) candidates.push("窓が開いとる");
+  if (room.futonOut) candidates.push("布団が呼んどる");
+  if (!candidates.length) candidates.push("なんとなく静かじゃ");
+  const last = state.world.memory.lastWorldSeed || "";
+  let pick = candidates[Math.floor(Math.random() * candidates.length)];
+  if (candidates.length > 1 && pick === last) {
+    pick = candidates.find((c) => c !== last) || pick;
+  }
+  state.world.memory.lastWorldSeed = pick;
+  return pick;
+}
+
+function maybeMonologue() {
+  const now = Date.now();
+  const cooldown = 20 * 1000 + Math.random() * 30 * 1000;
+  if (now - state.world.memory.lastMonologueAt < cooldown) return "";
+  if (Math.random() > 0.8) return "";
+  const prefixPool = ["……", "うむ", "そういえば", "ええと"];
+  const tailPool = ["のう", "かの", "じゃ", "わい"];
+  const seed = pickMonologueSeed();
+  const prefix = Math.random() < 0.5 ? `${prefixPool[Math.floor(Math.random() * prefixPool.length)]} ` : "";
+  const needsTail = !/のう$|かの$|じゃ$|わい$/.test(seed);
+  const tail = needsTail ? tailPool[Math.floor(Math.random() * tailPool.length)] : "";
+  const line = `${prefix}${seed}${tail}`;
+  state.world.memory.lastMonologue = line;
+  state.world.memory.lastMonologueAt = now;
+  return line;
+}
+
+function worldInsertPrefix() {
+  const { time, weather, room, items, body } = state.world;
+  if (weather.type === "rain" && weather.strength > 0 && Math.random() < 0.6) return "雨の音がするが、";
+  if (weather.type === "wind" && weather.strength > 0 && Math.random() < 0.6) return "風が強いが、";
+  if (weather.type === "clear" && time.phase === "day" && Math.random() < 0.4) return "晴れてきたが、";
+  if (items.yunomi.hasTea && items.yunomi.temp === "cold" && Math.random() < 0.5) return "茶が冷める前に、";
+  if (!items.yunomi.hasTea && Math.random() < 0.4) return "茶をいれなおして、";
+  if (items.yunomi.hasTea && items.yunomi.temp === "cold") return "茶が冷める前に、";
+  if (room.futonOut && time.phase === "night") return "布団から出たくないが、";
+  if (body.coldHands > 0.6) return "手が冷えるが、";
+  return "";
+}
+
+function worldTail() {
+  const { body } = state.world;
+  if (body.sleepiness > 0.7) return "もう寝るかの";
+  if (body.coldHands > 0.6) return "手が冷えるのう";
+  if (body.clarity > 0.75) return "……と思うのじゃ";
+  return "";
+}
+
+function worldExtraSentence() {
+  const { weather, items, room } = state.world;
+  if (weather.type === "rain") return "雨は静かじゃのう。";
+  if (weather.type === "wind") return "風の音がするのう。";
+  if (weather.type === "clear") return "今日は少しあたたかいのう。";
+  if (items.yunomi.hasTea && items.yunomi.temp === "cold") return "茶が冷めてしまったのう。";
+  if (!items.yunomi.hasTea) return "茶を淹れなおしたいのう。";
+  if (room.windowOpen) return "窓の外が気になるのう。";
+  return "";
+}
+
+function applyWorldFlavor(text) {
+  let out = text;
+  const prefix = Math.random() < 0.5 ? worldInsertPrefix() : "";
+  const tail = Math.random() < 0.6 ? worldTail() : "";
+  if (prefix) out = `${prefix} ${out}`;
+  if (tail) out = `${out} ${tail}`;
+  if (state.world.body.clarity > 0.75 && Math.random() < 0.5) {
+    const extra = worldExtraSentence();
+    if (extra) out = `${out} ${extra}`;
+  }
+  return out.trim();
 }
 
 function scrollToBottom() {
@@ -588,6 +816,7 @@ function sanitizeReply(text) {
   let out = text;
   out = out.replace(/その話の話/g, "その話");
   out = out.replace(/そういう話の話/g, "そういう話");
+  out = out.replace(/が、\s*[、。]/g, "が、");
   out = out.replace(/\s+/g, " ").trim();
   return out;
 }
@@ -754,10 +983,29 @@ function computeDelay(text) {
 }
 
 function respond(userText) {
-  let replyRaw = appendTailEcho(pickResponse(userText), userText);
+  worldCatchup();
+  worldStep();
+  const monologue = maybeMonologue();
+  let coreReply = appendTailEcho(pickResponse(userText), userText);
+  if (isTrivialOutput(coreReply)) {
+    coreReply = `${pickTemplate(TEMPLATES.answer, "")} ${pickTemplate(TEMPLATES.question, pickGenericTopic())}`;
+  }
+  const cleanUser = userText.replace(/\s+/g, "").trim();
+  const cleanReply = coreReply.replace(/\s+/g, "").trim();
+  if (cleanReply && cleanUser && cleanReply === cleanUser) {
+    coreReply = pickTemplate(TEMPLATES.general, "");
+  }
+  let replyRaw = applyWorldFlavor(coreReply);
+  if (monologue) {
+    if (Math.random() < 0.6) {
+      replyRaw = `${monologue} ${replyRaw}`.trim();
+    } else {
+      addMessage("ai", monologue);
+    }
+  }
   replyRaw = sanitizeReply(replyRaw);
   if (replyRaw === state.runtime.lastAiText) {
-    replyRaw = sanitizeReply(pickResponse(userText));
+    replyRaw = sanitizeReply(applyWorldFlavor(pickResponse(userText)));
   }
   if (isTrivialOutput(replyRaw)) {
     replyRaw = `${pickTemplate(TEMPLATES.answer, "")} ${pickTemplate(TEMPLATES.question, pickGenericTopic())}`;
@@ -800,7 +1048,8 @@ function resetAll() {
     lastAiText: "",
     settings: { ...DEFAULT_SETTINGS },
   };
-  state.meta = { version: "0.1", updatedAt: Date.now(), seeded: false };
+  state.world = defaultWorld();
+  state.meta = { version: "2.1", updatedAt: Date.now(), seeded: false };
   ensureSeeded();
   state.chat.messages.push({
     id: String(Date.now()),
@@ -830,6 +1079,7 @@ function bindEvents() {
 
 function boot() {
   initState();
+  worldCatchup();
   ensureSeeded();
   if (!state.chat.messages.length) {
     state.chat.messages.push({
