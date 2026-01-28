@@ -1,4 +1,4 @@
-# GGPT-1.1 — Generative Grandpa Pattern Talker
+# GGPT-2.1 — Generative Grandpa Pattern Talker
 
 最小構成の静的チャットアプリ。爺口調のテンプレート + ユーザー発話のビグラム学習で雑談っぽさを出します。
 
@@ -10,6 +10,7 @@
 - localStorage に会話ログと学習状態を保存
 - 古いログの自動忘却（maxMessages / maxChars）
 - 爺口調テンプレ + 低確率の揺らぎ
+- 小さな和室の世界モデル（独り言・生活感）
 - ユーザー発話のみ学習（bigram）
 - 返答にランダム遅延
 - NGワードは聞き損じ系の返しに切り替え
